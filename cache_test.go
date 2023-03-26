@@ -3,6 +3,9 @@ package tiny_cache
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/go-redis/redis"
 
 	"math/rand"
@@ -12,34 +15,79 @@ import (
 )
 
 var db = map[string]string{
-	"Tom":  "630",
-	"Jack": "589",
-	"Sam":  "567",
+	"T":          "Fj",
+	"Xw":         "mmLYaB0N",
+	"6ZTSxCKs0":  "Byk5SH9pBF",
+	"xnzyNnlR":   "_2wLrbN",
+	"IbZo":       "Tn",
+	"i":          "dj",
+	"RIYV":       "2g",
+	"MYpb3yx_":   "aNLWxS9QVO",
+	"a_hMcdvZa":  "Fy47U",
+	"oXhv":       "y-AlWqW31E",
+	"-EyJ":       "9EXRWv1C",
+	"A3T2kk":     "JOLK_Mr",
+	"vI":         "nn3x2Slv",
+	"9t4":        "d",
+	"8XpMchWj":   "6x5YScYH",
+	"Jm-XZHlLNz": "XoIR",
+	"1976ki0":    "TySr99-tY",
+	"Huj0O":      "2L6cO",
+	"nexqQOmh":   "8DPCgjBhpk",
+	"Ig0L88qZ":   "Rh-",
+	"ZfYG9q":     "m_L7JskB",
+	"TN4WB-4pum": "tDygi",
+	"Q0F5068tG":  "nR",
+	"N":          "t2Sc",
+	"k0":         "gEdd",
+	"r76PtW8Y":   "gjNQSEUX6",
+	"91g2t":      "W",
+	"h":          "ZX",
+	"6j3-":       "Nq",
+	"KuVBGU":     "VbzqQG",
+	"1hDK":       "bjP-qjKcmx",
+	"J0_7":       "X1q",
+	"RMx9":       "Bp8Bo",
+	"jRL0Elcy":   "My91drBiFM",
+	"6jn":        "xsbvg2Ly9U",
+	"Cdb8JaqKL":  "WjqUtNM",
+	"FD":         "By-2",
+	"NdYEqfP7T":  "G",
+	"EKeWBzLKU":  "w_UgyI",
+	"ASM":        "WJusuxXZr7",
+	"acLizc8j":   "vxd0rOdw6",
+	"VesjOr":     "0xPIo7Q3Dr",
+	"_ez1I":      "pvHtC",
+	"a":          "Fi5",
+	"fTq6U68Zd5": "i2Vw_6C3",
+	"_k46":       "m1ccJ",
+	"PprAsAznO_": "JxHzII",
+	"Syy9nCiH":   "O5ynQP",
+	"k":          "FyX1D",
+	"H":          "v8r8nhOGR",
 }
 
 func CacheTest(t *testing.T) {
 	start := time.Now()
-	loadCounts := make(map[string]int, len(db))
-	gee := MakeGroup("scores", 10*(1<<20), GetterFunc(
-		func(key string) ([]byte, error) {
-			//log.Println("[SlowDB] search key", key)
-			if v, ok := db[key]; ok {
-				if _, ok := loadCounts[key]; !ok {
-					loadCounts[key] = 0
-				}
-				loadCounts[key] += 1
-				return []byte(v), nil
-			}
-			return nil, fmt.Errorf("%s not exist", key)
-		}))
 	for i := 0; i < 100; i++ {
 		for k, v := range db {
-			if view, err := gee.Get(k); err != nil || view.String() != v {
-				t.Fatal("failed to get value of Tom")
-			} // load from callback function
-			if _, err := gee.Get(k); err != nil || loadCounts[k] > 1 {
-				t.Fatalf("tiny-cache %s miss", k)
-			} // tiny-cache hit
+			// tiny-cache hit
+			resp, err := http.Get("http://localhost:9999/api?key=" + k)
+			if err != nil {
+				fmt.Println("请求失败：", err)
+				return
+			}
+			go func(v string) {
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					fmt.Println("读取响应失败：", err)
+					return
+				}
+				if string(body) != v {
+					panic("tiny-cache failed to get data")
+				}
+				resp.Body.Close()
+			}(v)
 		}
 	}
 	fmt.Println("tiny-cache::----------------", time.Since(start).Seconds(), "---------------------")
@@ -51,15 +99,14 @@ func RedisTest(t *testing.T) {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
-
 	client.ConfigSet("maxmemory-policy", "allkeys-lfu")
-	client.ConfigSet("maxmemory", "100mb")
+	client.ConfigSet("maxmemory", "10mb")
+	for k, v := range db {
+		client.Set(k, v, 0).Err()
+	}
+
 	for i := 0; i < 100; i++ {
 		for k, v := range db {
-			err := client.Set(k, v, 0).Err()
-			if err != nil {
-				panic(err)
-			}
 			val, err := client.Get(k).Result()
 			if err != nil {
 				panic(err)
@@ -82,10 +129,6 @@ func generateRandomString(length int) string {
 }
 
 func TestCompareWithRedis(t *testing.T) {
-	for i := 1; i <= 1000; i++ {
-		k, v := generateRandomString(rand.Int()%i+i), generateRandomString(rand.Int()%i+i)
-		db[k] = v
-	}
 	CacheTest(t)
 	RedisTest(t)
 }

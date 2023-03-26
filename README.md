@@ -34,22 +34,27 @@ sudo chmod 777 start.sh
 
 
 
-### Cache Test(Redis use LFU)
-`tester: TestCompareWithRedis()`
-```zsh
-=== RUN   TestCompareWithRedis
-tiny-cache::---------------- 0.140929567 ---------------------
-redis::---------------- 16.512397662 ---------------------
---- PASS: TestCompareWithRedis (16.66s)
-PASS
+### Cache Test
+Run Test
+```go
+run main/start.sh
+go test -run TestCompareWithRedis
 ```
-The result shows that my Cache is 117.16773146688233 times faster than redis. (LOL
+
+```zsh
+tiny-cache::---------------- 9.245247998 ---------------------
+redis::---------------- 0.689376226 ---------------------
+PASS
+ok      7daysgo/tiny-cache      9.939s
+```
+
+The result shows that my Cache is 13 times slower than redis. (LOL
 
 ### some useful command
 
 `proxy unset`
 ```zsh
-lsof -i :8001 -i :8002 -i :8003 | grep LISTEN | awk '{print $2}' | xargs kill -9
+lsof -i :8001 -i :8002 -i :8003 -i :9999| grep LISTEN | awk '{print $2}' | xargs kill -9
 ```
 
 ### remote bugs
